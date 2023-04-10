@@ -10,7 +10,7 @@ const returnScraperApiUrl = (apiKey) => `http://api.scraperapi.com?api_key=${api
 
 // Welcome route
 app.get('/', async (req, res) => {
-    res.send('Welcome to Amazon Scraper API!');
+    res.send('Welcome to Amazon Scraper API! Created By Tolgahan Bora ');
 });
 
 // Get product details
