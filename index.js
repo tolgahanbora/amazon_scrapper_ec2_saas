@@ -1,8 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const rateLimit = require('express-rate-limit');
 const cacheManager = require('cache-manager');
-const memoryCache = cacheManager.caching({ store: 'memory', max: 100, ttl: 60 * 5 }); // 5 dakika önbellek
 
 const PORT = process.env.PORT || 5000;
 const app = express();
@@ -16,26 +16,51 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-const returnScraperApiUrl = (apiKey) => `http://api.scraperapi.com?api_key=${apiKey}&autoparse=true`;
+const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
+
+if (!SCRAPER_API_KEY) {
+  console.error('SCRAPER_API_KEY is not set in environment variables');
+  process.exit(1);
+}
+
+const returnScraperApiUrl = (url) => `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&autoparse=true&url=${encodeURIComponent(url)}`;
+
+let memoryCache;
+
+async function setupCache() {
+  memoryCache = await cacheManager.caching('memory', { 
+    max: 100, 
+    ttl: 60 * 5 // 5 dakika önbellek
+  });
+}
 
 // Önbellek middleware'i
 const cacheMiddleware = (duration) => {
-  return (req, res, next) => {
+  return async (req, res, next) => {
+    if (!memoryCache) {
+      return next();
+    }
     let key = req.originalUrl || req.url;
-    memoryCache.get(key, (err, result) => {
+    try {
+      const result = await memoryCache.get(key);
       if (result) {
         return res.json(result);
       } else {
         res.originalJson = res.json;
-        res.json = (body) => {
-          memoryCache.set(key, body, { ttl: duration }, (err) => {
-            if (err) console.error(err);
-          });
+        res.json = async (body) => {
+          try {
+            await memoryCache.set(key, body, { ttl: duration });
+          } catch (err) {
+            console.error(err);
+          }
           res.originalJson(body);
         };
         next();
       }
-    });
+    } catch (err) {
+      console.error(err);
+      next();
+    }
   };
 };
 
@@ -49,10 +74,9 @@ app.get('/', async (req, res) => {
 // Get Amazon product details
 app.get('/amazon/products/:productId', cacheMiddleware(300), async (req, res) => {
     const { productId } = req.params;
-    const { api_key } = req.query;
 
     try {
-        const response = await axios.get(`${returnScraperApiUrl(api_key)}&url=https://www.amazon.com/dp/${productId}`);
+        const response = await axios.get(returnScraperApiUrl(`https://www.amazon.com/dp/${productId}`));
         res.json(response.data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -62,10 +86,9 @@ app.get('/amazon/products/:productId', cacheMiddleware(300), async (req, res) =>
 // Get Amazon product reviews
 app.get('/amazon/products/:productId/reviews', cacheMiddleware(300), async (req, res) => {
     const { productId } = req.params;
-    const { api_key } = req.query;
     
     try {
-        const response = await axios.get(`${returnScraperApiUrl(api_key)}&url=https://www.amazon.com/product-reviews/${productId}`);
+        const response = await axios.get(returnScraperApiUrl(`https://www.amazon.com/product-reviews/${productId}`));
         res.json(response.data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -75,10 +98,9 @@ app.get('/amazon/products/:productId/reviews', cacheMiddleware(300), async (req,
 // Get Amazon product offers
 app.get('/amazon/products/:productId/offers', cacheMiddleware(300), async (req, res) => {
     const { productId } = req.params;
-    const { api_key } = req.query;
     
     try {
-        const response = await axios.get(`${returnScraperApiUrl(api_key)}&url=https://www.amazon.com/gp/offer-listing/${productId}`);
+        const response = await axios.get(returnScraperApiUrl(`https://www.amazon.com/gp/offer-listing/${productId}`));
         res.json(response.data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -88,10 +110,9 @@ app.get('/amazon/products/:productId/offers', cacheMiddleware(300), async (req, 
 // Get Amazon search results
 app.get('/amazon/search/:searchQuery', cacheMiddleware(300), async (req, res) => {
     const { searchQuery } = req.params;
-    const { api_key } = req.query;
     
     try {
-        const response = await axios.get(`${returnScraperApiUrl(api_key)}&url=https://www.amazon.com/s?k=${encodeURIComponent(searchQuery)}`);
+        const response = await axios.get(returnScraperApiUrl(`https://www.amazon.com/s?k=${encodeURIComponent(searchQuery)}`));
         res.json(response.data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -103,10 +124,9 @@ app.get('/amazon/search/:searchQuery', cacheMiddleware(300), async (req, res) =>
 // Get eBay product details
 app.get('/ebay/products/:productId', cacheMiddleware(300), async (req, res) => {
     const { productId } = req.params;
-    const { api_key } = req.query;
 
     try {
-        const response = await axios.get(`${returnScraperApiUrl(api_key)}&url=https://www.ebay.com/itm/${productId}`);
+        const response = await axios.get(returnScraperApiUrl(`https://www.ebay.com/itm/${productId}`));
         res.json(response.data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -116,10 +136,9 @@ app.get('/ebay/products/:productId', cacheMiddleware(300), async (req, res) => {
 // Get eBay seller's other items
 app.get('/ebay/seller/:sellerId/items', cacheMiddleware(300), async (req, res) => {
     const { sellerId } = req.params;
-    const { api_key } = req.query;
     
     try {
-        const response = await axios.get(`${returnScraperApiUrl(api_key)}&url=https://www.ebay.com/sch/m.html?_ssn=${sellerId}&_from=R40&_trksid=p2499338.m570.l1313&_nkw=${sellerId}&_sacat=0`);
+        const response = await axios.get(returnScraperApiUrl(`https://www.ebay.com/sch/m.html?_ssn=${sellerId}&_from=R40&_trksid=p2499338.m570.l1313&_nkw=${sellerId}&_sacat=0`));
         res.json(response.data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -129,10 +148,9 @@ app.get('/ebay/seller/:sellerId/items', cacheMiddleware(300), async (req, res) =
 // Get eBay search results
 app.get('/ebay/search/:searchQuery', cacheMiddleware(300), async (req, res) => {
     const { searchQuery } = req.params;
-    const { api_key } = req.query;
     
     try {
-        const response = await axios.get(`${returnScraperApiUrl(api_key)}&url=https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(searchQuery)}`);
+        const response = await axios.get(returnScraperApiUrl(`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(searchQuery)}`));
         res.json(response.data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -142,14 +160,18 @@ app.get('/ebay/search/:searchQuery', cacheMiddleware(300), async (req, res) => {
 // Get eBay category listings
 app.get('/ebay/category/:categoryId', cacheMiddleware(300), async (req, res) => {
     const { categoryId } = req.params;
-    const { api_key } = req.query;
     
     try {
-        const response = await axios.get(`${returnScraperApiUrl(api_key)}&url=https://www.ebay.com/b/${categoryId}`);
+        const response = await axios.get(returnScraperApiUrl(`https://www.ebay.com/b/${categoryId}`));
         res.json(response.data);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-app.listen(PORT, () => console.log(`Server Running on Port: ${PORT}`));
+async function startServer() {
+  await setupCache();
+  app.listen(PORT, () => console.log(`Server Running on Port: ${PORT}`));
+}
+
+startServer();
