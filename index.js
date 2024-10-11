@@ -16,7 +16,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-const SCRAPER_API_KEY = "d591d819bef147515e57cdda914b3cf3"
+const SCRAPER_API_KEY = "d591d819bef147515e57cdda914b3cf3";
 
 if (!SCRAPER_API_KEY) {
   console.error('SCRAPER_API_KEY is not set in environment variables');
@@ -27,12 +27,14 @@ const returnScraperApiUrl = (url) => `http://api.scraperapi.com?api_key=${SCRAPE
 
 let memoryCache;
 
+// Cache yapılandırması
 async function setupCache() {
   memoryCache = await cacheManager.caching('memory', { 
     max: 100, 
     ttl: 60 * 5 // 5 dakika önbellek
   });
 }
+
 
 // Önbellek middleware'i
 const cacheMiddleware = (duration) => {
@@ -66,107 +68,107 @@ const cacheMiddleware = (duration) => {
 
 // Welcome route
 app.get('/', async (req, res) => {
-    res.send('Welcome to Amazon and eBay Scraper API! Created By Tolgahan Bora');
+  res.send('Welcome to Amazon and eBay Scraper API! Created By Tolgahan Bora');
 });
 
 // Amazon Routes
 
 // Get Amazon product details
 app.get('/amazon/products/:productId', cacheMiddleware(300), async (req, res) => {
-    const { productId } = req.params;
+  const { productId } = req.params;
 
-    try {
-        const response = await axios.get(returnScraperApiUrl(`https://www.amazon.com/dp/${productId}`));
-        res.json(response.data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+  try {
+    const response = await axios.get(returnScraperApiUrl(`https://www.amazon.com/dp/${productId}`));
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Get Amazon product reviews
 app.get('/amazon/products/:productId/reviews', cacheMiddleware(300), async (req, res) => {
-    const { productId } = req.params;
-    
-    try {
-        const response = await axios.get(returnScraperApiUrl(`https://www.amazon.com/product-reviews/${productId}`));
-        res.json(response.data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+  const { productId } = req.params;
+
+  try {
+    const response = await axios.get(returnScraperApiUrl(`https://www.amazon.com/product-reviews/${productId}`));
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Get Amazon product offers
 app.get('/amazon/products/:productId/offers', cacheMiddleware(300), async (req, res) => {
-    const { productId } = req.params;
-    
-    try {
-        const response = await axios.get(returnScraperApiUrl(`https://www.amazon.com/gp/offer-listing/${productId}`));
-        res.json(response.data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+  const { productId } = req.params;
+
+  try {
+    const response = await axios.get(returnScraperApiUrl(`https://www.amazon.com/gp/offer-listing/${productId}`));
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Get Amazon search results
 app.get('/amazon/search/:searchQuery', cacheMiddleware(300), async (req, res) => {
-    const { searchQuery } = req.params;
-    
-    try {
-        const response = await axios.get(returnScraperApiUrl(`https://www.amazon.com/s?k=${encodeURIComponent(searchQuery)}`));
-        res.json(response.data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+  const { searchQuery } = req.params;
+
+  try {
+    const response = await axios.get(returnScraperApiUrl(`https://www.amazon.com/s?k=${encodeURIComponent(searchQuery)}`));
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // eBay Routes
 
 // Get eBay product details
 app.get('/ebay/products/:productId', cacheMiddleware(300), async (req, res) => {
-    const { productId } = req.params;
+  const { productId } = req.params;
 
-    try {
-        const response = await axios.get(returnScraperApiUrl(`https://www.ebay.com/itm/${productId}`));
-        res.json(response.data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+  try {
+    const response = await axios.get(returnScraperApiUrl(`https://www.ebay.com/itm/${productId}`));
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Get eBay seller's other items
 app.get('/ebay/seller/:sellerId/items', cacheMiddleware(300), async (req, res) => {
-    const { sellerId } = req.params;
-    
-    try {
-        const response = await axios.get(returnScraperApiUrl(`https://www.ebay.com/sch/m.html?_ssn=${sellerId}&_from=R40&_trksid=p2499338.m570.l1313&_nkw=${sellerId}&_sacat=0`));
-        res.json(response.data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+  const { sellerId } = req.params;
+
+  try {
+    const response = await axios.get(returnScraperApiUrl(`https://www.ebay.com/sch/m.html?_ssn=${sellerId}&_from=R40&_trksid=p2499338.m570.l1313&_nkw=${sellerId}&_sacat=0`));
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Get eBay search results
 app.get('/ebay/search/:searchQuery', cacheMiddleware(300), async (req, res) => {
-    const { searchQuery } = req.params;
-    
-    try {
-        const response = await axios.get(returnScraperApiUrl(`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(searchQuery)}`));
-        res.json(response.data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+  const { searchQuery } = req.params;
+
+  try {
+    const response = await axios.get(returnScraperApiUrl(`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(searchQuery)}`));
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Get eBay category listings
 app.get('/ebay/category/:categoryId', cacheMiddleware(300), async (req, res) => {
-    const { categoryId } = req.params;
-    
-    try {
-        const response = await axios.get(returnScraperApiUrl(`https://www.ebay.com/b/${categoryId}`));
-        res.json(response.data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+  const { categoryId } = req.params;
+
+  try {
+    const response = await axios.get(returnScraperApiUrl(`https://www.ebay.com/b/${categoryId}`));
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 async function startServer() {
