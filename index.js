@@ -11,7 +11,7 @@ app.use(express.json());
 
 // Rate limiter: Her IP için dakikada 100 istek
 const limiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 dakika
+  windowMs: 1 * 60 * 1000, // 1 dakika.
   max: 100
 });
 app.use(limiter);
