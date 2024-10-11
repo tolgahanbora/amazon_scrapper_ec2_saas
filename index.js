@@ -16,7 +16,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
+const SCRAPER_API_KEY = "d591d819bef147515e57cdda914b3cf3"
 
 if (!SCRAPER_API_KEY) {
   console.error('SCRAPER_API_KEY is not set in environment variables');
